@@ -84,7 +84,6 @@ SYSTEM_INSTRUCTIONS = {
 
     "label_selection_rules": [
         "If SZZ origin issues exist, NEVER return 'Non-risky'.",
-        "If the failure is generic or unclear, default to 'Bug Risk' rather than omitting it.",
         "Select Performance Risk ONLY if the issue explicitly reports latency, throughput, memory, CPU, or scalability degradation.",
         "Multiple labels may be selected ONLY if the failures are independent and observable.",
         "If one risk is a downstream consequence of another, select ONLY the primary symptom-level risk."
