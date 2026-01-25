@@ -52,12 +52,12 @@ def query_ollama_model(model_name: str, user_prompt: str) -> dict:
 
 
 def query_gemma(prompt: str, pr: Dict) -> Dict:
-    return query_ollama_model("gemma2:9b", prompt)
+    return query_ollama_model("gemma2:9b-8k", prompt)
 
 
 def query_llama(prompt: str, pr: Dict) -> Dict:
-    return query_ollama_model("llama3.1:8b", prompt)
+    return query_ollama_model("llama3.1:8b-8k", prompt)
 
 
 def query_mistral(prompt: str, pr: Dict) -> Dict:
-    return query_ollama_model("mistral:7b-instruct", prompt)
+    return query_ollama_model("mistral:7b-8k", prompt)
