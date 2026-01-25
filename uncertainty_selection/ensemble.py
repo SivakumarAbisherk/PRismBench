@@ -99,6 +99,15 @@ def train_all_models(
 
         for label_col in label_columns:
             y_binary = y_train[label_col]
+            
+            # Ensure binary format (0 or 1 only)
+            y_binary = y_binary.astype(int)
+            unique_vals = np.unique(y_binary)
+            if len(unique_vals) != 2 or not all(v in [0, 1] for v in unique_vals):
+                raise ValueError(
+                    f"Label '{label_col}' is not binary. Values: {unique_vals}. "
+                    f"Bootstrap {bootstrap_idx} only has {len(unique_vals)} class(es)."
+                )
 
             # imbalance ratio for this label
             pos = int(np.sum(y_binary == 1))
