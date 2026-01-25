@@ -29,6 +29,7 @@ from .diversity import k_center_greedy_from_uncertain
 
 
 def run_uncertainty_selection(
+    ml_features_csv:str,
     loop_number: int = 1,
     project: str = "kafka",
     data_root: Path = Path("SamplingLoopData"),
@@ -78,6 +79,16 @@ def run_uncertainty_selection(
     loop_unlabeled_dir = resolve_loop_dir(cfg.data_root, cfg.loop_number-1)
     unlabeled = load_loop_unlabeled_data(loop_unlabeled_dir)
     # h=unlabeled.shape  
+
+    # filtering only the prs with szz issues
+    # read pr data with szz
+    szz_issue_path = Path(__file__).parent.parent / ml_features_csv
+    szz_origin_check = pd.read_csv(szz_issue_path)
+    # prs with szz extracted from the szz data
+    pr_with_szz = szz_origin_check.loc[~szz_origin_check["szz_origin_issues"].isna(),"pr_number"]
+
+    # unlabeld prs with szz issue tickes linked
+    unlabeled = unlabeled[unlabeled["pr_number"].isin(pr_with_szz)]
 
     # Load labeled data from all previous loops (exclude current loop)
     labeled_dfs = []
