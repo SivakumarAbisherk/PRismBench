@@ -5,16 +5,20 @@ from extract_and_assign_labels import extract_and_assign_labels
 
 def main():
     
-    loop_number = 1
+
+    num_of_loops = 15
     ml_features_csv = 'ML_Label_Input_apache_kafka.csv'
 
     uncertain_output_dir=Path("UncertainPoint")
     max_items = None # to limit llm labeling pr counts for testing purpose
 
-    while(loop_number < loop_number + 10):
+    loop_number = 1
+    loop_limit = loop_number + num_of_loops
+    while(loop_number < loop_limit):
         pr_list_csv = uncertain_output_dir / f"loop_{loop_number}_selected.csv" 
         
         selected_df = run_uncertainty_selection(
+            ml_features_csv=ml_features_csv,
             loop_number=loop_number,
             project="kafka",
             data_root=Path("SamplingLoopData"),
