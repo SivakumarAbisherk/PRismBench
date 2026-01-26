@@ -62,7 +62,7 @@ def run_labeling_pipeline(
         
         accepted, human = run_labeling_pipeline(
             loop_number=1,
-            ml_features_csv='ML_Label_Input_apache_kafka.csv',
+            ml_features_csv='ML_Label_Input_apache_{project_name}.csv',
             pr_list_csv='loop_1.csv'
         )
     """

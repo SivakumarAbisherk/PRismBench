@@ -31,7 +31,6 @@ from .diversity import k_center_greedy_from_uncertain
 def run_uncertainty_selection(
     ml_features_csv:str,
     loop_number: int = 1,
-    project: str = "kafka",
     data_root: Path = Path("SamplingLoopData"),
     output_dir: Path = Path("UncertainPoints"),
     n_bootstrap: int = 20,
@@ -47,7 +46,6 @@ def run_uncertainty_selection(
     
     Args:
         loop_number: Loop/iteration number
-        project: Project name (e.g., "kafka")
         data_root: Root directory containing loop data
         output_dir: Directory to write output files
         n_bootstrap: Number of bootstrap samples
@@ -65,7 +63,6 @@ def run_uncertainty_selection(
 
     cfg = SelectionConfig(
         loop_number=loop_number,
-        project_name=project,
         data_root=data_root,
         output_dir=output_dir,
         n_bootstrap_sets=n_bootstrap,

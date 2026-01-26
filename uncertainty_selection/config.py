@@ -92,7 +92,6 @@ class SelectionConfig:
     """
 
     loop_number: int = 1
-    project_name: str = "kafka"
 
     data_root: Path = Path("SamplingLoopData")
     output_dir: Path = Path("UncertainPoints")

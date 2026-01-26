@@ -7,7 +7,7 @@ def main():
     
 
     num_of_loops = 15
-    ml_features_csv = 'ML_Label_Input_apache_kafka.csv'
+    ml_features_csv = 'ML_Label_Input_apache_flink.csv'
 
     uncertain_output_dir=Path("UncertainPoint")
     max_items = None # to limit llm labeling pr counts for testing purpose
@@ -20,7 +20,6 @@ def main():
         selected_df = run_uncertainty_selection(
             ml_features_csv=ml_features_csv,
             loop_number=loop_number,
-            project="kafka",
             data_root=Path("SamplingLoopData"),
             output_dir=uncertain_output_dir,
             n_bootstrap=20,
