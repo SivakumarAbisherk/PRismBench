@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
+from sklearn.utils import resample
 
 try:
     from xgboost import XGBClassifier
@@ -15,11 +16,6 @@ except Exception as e:  # pragma: no cover
 
 
 EnsembleDict = Dict[int, Dict[str, Dict[str, object]]]
-
-
-def create_bootstrap_indices(n_samples: int, seed: int) -> np.ndarray:
-    rng = np.random.default_rng(seed)
-    return rng.integers(low=0, high=n_samples, size=n_samples)
 
 
 def create_bootstrap_samples(
@@ -31,9 +27,17 @@ def create_bootstrap_samples(
     bootstrap_sets_y: List[pd.DataFrame] = []
 
     for i in range(n_sets):
-        idx = create_bootstrap_indices(X.shape[0], seed=i)
-        bootstrap_sets_X.append(X.iloc[idx])
-        bootstrap_sets_y.append(y.iloc[idx])
+        # Use stratified resampling to preserve class distribution
+        # Stratify by the first label column to maintain balance
+        idx = resample(
+            range(X.shape[0]),
+            n_samples=X.shape[0],
+            replace=True,
+            random_state=i,
+            stratify=y.iloc[:, 0].values  # Stratify by first label column
+        )
+        bootstrap_sets_X.append(X.iloc[idx].reset_index(drop=True))
+        bootstrap_sets_y.append(y.iloc[idx].reset_index(drop=True))
 
     return bootstrap_sets_X, bootstrap_sets_y
 
