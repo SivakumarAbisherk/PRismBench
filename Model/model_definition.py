@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 
 class MLP(nn.Module):
     def __init__(self, in_dim:int, 
-                 hidden_dim:tuple=(256, 128, 64, 32), 
-                 drop_out:tuple=(0.1, 0.1, 0.1, 0.1), 
+                 hidden_dim:tuple=(256, 128, 64), 
+                 drop_out:tuple=(0.1, 0.1, 0.1), 
                  out_dim:int=4
         ):
         super().__init__()
