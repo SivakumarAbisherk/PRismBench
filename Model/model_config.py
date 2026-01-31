@@ -1,6 +1,9 @@
+import torch
 import torch.optim as optim
 
 SEED = 1
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 EPOCHES = 50
 
@@ -22,7 +25,7 @@ PARAM_GRID = {
         ],
     "drop_out":[
         (0.1, 0.1, 0.2), 
-        # (0.1, 0.3, 0.5)
+        (0.1, 0.3, 0.5)
         ],
 }
 
