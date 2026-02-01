@@ -3,7 +3,7 @@ import torch.nn as nn
 class MLP(nn.Module):
     def __init__(self, in_dim:int, 
                  hidden_dim:tuple=(256, 128, 64), 
-                 drop_out:tuple=(0.1, 0.1, 0.1), 
+                 dropout:tuple=(0.1, 0.1, 0.1), 
                  out_dim:int=4
         ):
         super().__init__()
@@ -12,7 +12,7 @@ class MLP(nn.Module):
         layers_stack = []
         n_node_prev = in_dim
 
-        for h, d in zip(hidden_dim, drop_out):
+        for h, d in zip(hidden_dim, dropout):
 
             # add linear layer
             layers_stack.append(nn.Linear(n_node_prev, h))
