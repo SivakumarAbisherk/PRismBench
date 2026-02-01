@@ -1,11 +1,4 @@
-import pandas as pd
-import numpy as np
-
-import torch
 import torch.nn as nn
-import torch.optim as optim
-
-from torch.utils.data import DataLoader
 
 class MLP(nn.Module):
     def __init__(self, in_dim:int, 
