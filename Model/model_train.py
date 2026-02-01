@@ -25,7 +25,12 @@ from sklearn.model_selection import KFold
 
 from scale_numeric_features import scale_log_transformed
 
-def train_MLP(X_train, y_train, hidden_dims, dropout, lr, weight_decay, batch_size, optimizer_definition, epochs, device):
+def train_MLP(X_train, y_train, 
+              hidden_dims, dropout, 
+              lr, weight_decay, batch_size, optimizer_definition, 
+              epochs, device):
+
+    print(f"\nFinal Model Training with HParams: LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
 
     input_dim = X_train.shape[1]
     output_dim = y_train.shape[1]
@@ -54,6 +59,8 @@ def train_MLP(X_train, y_train, hidden_dims, dropout, lr, weight_decay, batch_si
 
             loss.backward()
             optimizer.step()
+
+        print(f"\n Epoch {epoch+1}/{epochs} completed.")
     return model
 
 
@@ -97,8 +104,6 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
 
         train_loader, _ = make_data_loaders(X=X_train,y=y_train, batch_size=batch_size)
         val_loader, _ = make_data_loaders(X=X_val,y=y_val, batch_size=batch_size)
-
-        
 
         for epoch in range(epochs):
             model.train()
