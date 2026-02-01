@@ -25,7 +25,7 @@ from sklearn.model_selection import KFold
 
 from scale_numeric_features import scale_log_transformed
 
-def train_mlp(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
+def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
               model_definition=MLP, optimizers=OPTIMIZERS, param_grid=PARAM_GRID, epochs=EPOCHS,
               device=DEVICE, batch_size=BATCH_SIZE, label_threshold=LABEL_THRESHOLD, seed=SEED):
     # set seed for any random initialization
@@ -149,8 +149,8 @@ def train_mlp_with_cv(X, y, optimizer_choice, k=5, **kwargs):
         X_train_scaled, scaler = scale_log_transformed(X_train, train_scaler=None)
         X_val_scaled, scaler = scale_log_transformed(X_val, train_scaler=scaler)
 
-        # Call train_mlp for this fold
-        model_state, f1_score, hparams = train_mlp(
+        # Call tune_hyper_param for this fold
+        model_state, f1_score, hparams = tune_hyper_param(
             X_train_scaled, y_train, X_val_scaled, y_val, optimizer_choice, k_i=fold+1, **kwargs
         )
         
