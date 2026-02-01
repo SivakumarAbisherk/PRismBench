@@ -1,4 +1,5 @@
 import copy 
+import pandas as pd
 import numpy as np
 import itertools
 
@@ -23,16 +24,21 @@ from model_utils import(
 import torch.nn as nn
 from sklearn.model_selection import KFold
 
-from scale_numeric_features import scale_log_transformed
+from scale_numeric_features import scale_and_log_transform
 
-def train_MLP(X_train, y_train, 
+def train_final_MLP(X_train:pd.DataFrame, y_train:pd.DataFrame, 
               hidden_dims, dropout, 
               lr, weight_decay, batch_size, optimizer_definition, 
               epochs, device):
 
     print(f"\nFinal Model Training with HParams: LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
 
-    input_dim = X_train.shape[1]
+    # drop pr_numer from the given dataframe
+    X_train = X_train.drop(columns=["pr_number"])
+    # scale numeric data
+    X_train_scaled, scaler = scale_and_log_transform(X_train, train_scaler=None)
+
+    input_dim = X_train_scaled.shape[1]
     output_dim = y_train.shape[1]
 
     model = MLP(in_dim=input_dim, hidden_dim=hidden_dims, dropout=dropout, out_dim=output_dim).to(device)
@@ -44,7 +50,7 @@ def train_MLP(X_train, y_train,
     # pos weight for handling class imabalance
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
-    train_loader, _ = make_data_loaders(X=X_train,y=y_train, batch_size=batch_size)
+    train_loader, _ = make_data_loaders(X=X_train_scaled,y=y_train, batch_size=batch_size)
     
     for epoch in range(epochs):
         model.train()
@@ -60,12 +66,78 @@ def train_MLP(X_train, y_train,
             loss.backward()
             optimizer.step()
 
-        print(f"\n Epoch {epoch+1}/{epochs} completed.")
-    return model
+        print(f"Epoch {epoch+1}/{epochs} completed.")
+    return model, scaler
 
 
-def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
-              model_definition=MLP, optimizers=OPTIMIZERS, param_grid=PARAM_GRID, epochs=EPOCHS,
+def train_mlp_with_cv(X, y, optimizer_choice, k=5, **kwargs):
+    """
+    Perform k-fold cross validation using train_mlp as helper function.
+    
+    Args:
+        X (pd.DataFrame): Feature matrix
+        y (pd.DataFrame): Label matrix
+        optimizer_choice (str): Optimizer to use ('adam' or 'adamw')
+        k (int): Number of folds for cross validation
+        **kwargs: Additional arguments passed to train_mlp
+        
+    Returns:
+        tuple: (best_model_state, average_f1, best_hparams) where best is from the fold with highest F1
+    """
+    kf = KFold(n_splits=k, shuffle=True, random_state=SEED)
+    
+    fold_f1_scores = []
+    fold_hparams = []
+    fold_model_states = []
+    
+    best_overall_f1 = -np.inf
+    best_model_state = None
+    best_hparams = None
+
+    # drop pr_numer from the given dataframe
+    X = X.drop(columns=["pr_number"])
+    X_scaled, scaler = scale_and_log_transform(X, train_scaler=None)
+
+    for fold, (train_idx, val_idx) in enumerate(kf.split(X_scaled)):
+        print(f"\n{'='*50}")
+        print(f"Fold {fold+1}/{k}")
+        print(f"{'='*50}")
+        
+        X_train = X_scaled.iloc[train_idx]
+        y_train = y.iloc[train_idx]
+        X_val = X_scaled.iloc[val_idx]
+        y_val = y.iloc[val_idx]
+
+        # Call tune_hyper_param for this fold
+        model_state, f1_score, hparams = tune_hyper_param(
+            X_train, y_train, X_val, y_val, optimizer_choice, k_i=fold+1, **kwargs
+        )
+        
+        fold_f1_scores.append(f1_score)
+        fold_hparams.append(hparams)
+        fold_model_states.append(model_state)
+        
+        if f1_score > best_overall_f1:
+            best_overall_f1 = f1_score
+            best_model_state = model_state
+            best_hparams = hparams
+    
+    average_f1 = np.mean(fold_f1_scores)
+    std_f1 = np.std(fold_f1_scores)
+    
+    print(f"\n{'='*50}")
+    print("Cross Validation Results:")
+    print(f"{'='*50}")
+    print(f"Average F1-micro: {average_f1:.4f} ± {std_f1:.4f}")
+    print(f"Best Fold F1-micro: {best_overall_f1:.4f}")
+    print(f"Best Hyperparameters: {best_hparams}")
+    print(f"Fold F1 scores: {fold_f1_scores}")
+    
+    return best_model_state, average_f1, best_hparams, scaler
+
+
+def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i, 
+                     optimizers=OPTIMIZERS, param_grid=PARAM_GRID, epochs=EPOCHS,
               device=DEVICE, batch_size=BATCH_SIZE, label_threshold=LABEL_THRESHOLD, seed=SEED):
     # set seed for any random initialization
     set_seed(seed=seed)
@@ -75,7 +147,6 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
     best_f1_micro = -np.inf
     best_hparams = None
     best_model_state = None
-
 
     for hparams in itertools.product(
         param_grid["lr"],
@@ -90,7 +161,7 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
         input_dim = X_train.shape[1]
         output_dim = y_train.shape[1]
 
-        model = model_definition(in_dim=input_dim, 
+        model = MLP(in_dim=input_dim, 
                       hidden_dim=hidden_dims, 
                       dropout=dropout, 
                       out_dim=output_dim).to(device)
@@ -107,7 +178,7 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
 
         for epoch in range(epochs):
             model.train()
-            # running_loss = 0.0
+
             for inputs, labels in train_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
 
@@ -118,8 +189,6 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
 
                 loss.backward()
                 optimizer.step()
-
-                # running_loss += loss.item() * inputs.size(0)
 
             validation_probs, validation_labels = get_prediction_probs(model, val_loader)
             
@@ -148,66 +217,3 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
     return best_model_state, best_f1_micro, best_hparams
 
 
-def train_mlp_with_cv(X, y, optimizer_choice, k=5, **kwargs):
-    """
-    Perform k-fold cross validation using train_mlp as helper function.
-    
-    Args:
-        X (pd.DataFrame): Feature matrix
-        y (pd.DataFrame): Label matrix
-        optimizer_choice (str): Optimizer to use ('adam' or 'adamw')
-        k (int): Number of folds for cross validation
-        **kwargs: Additional arguments passed to train_mlp
-        
-    Returns:
-        tuple: (best_model_state, average_f1, best_hparams) where best is from the fold with highest F1
-    """
-    kf = KFold(n_splits=k, shuffle=True, random_state=SEED)
-    
-    fold_f1_scores = []
-    fold_hparams = []
-    fold_model_states = []
-    
-    best_overall_f1 = -np.inf
-    best_model_state = None
-    best_hparams = None
-
-    for fold, (train_idx, val_idx) in enumerate(kf.split(X)):
-        print(f"\n{'='*50}")
-        print(f"Fold {fold+1}/{k}")
-        print(f"{'='*50}")
-        
-        X_train = X.iloc[train_idx]
-        y_train = y.iloc[train_idx]
-        X_val = X.iloc[val_idx]
-        y_val = y.iloc[val_idx]
-
-        X_train_scaled, scaler = scale_log_transformed(X_train, train_scaler=None)
-        X_val_scaled, scaler = scale_log_transformed(X_val, train_scaler=scaler)
-
-        # Call tune_hyper_param for this fold
-        model_state, f1_score, hparams = tune_hyper_param(
-            X_train_scaled, y_train, X_val_scaled, y_val, optimizer_choice, k_i=fold+1, **kwargs
-        )
-        
-        fold_f1_scores.append(f1_score)
-        fold_hparams.append(hparams)
-        fold_model_states.append(model_state)
-        
-        if f1_score > best_overall_f1:
-            best_overall_f1 = f1_score
-            best_model_state = model_state
-            best_hparams = hparams
-    
-    average_f1 = np.mean(fold_f1_scores)
-    std_f1 = np.std(fold_f1_scores)
-    
-    print(f"\n{'='*50}")
-    print("Cross Validation Results:")
-    print(f"{'='*50}")
-    print(f"Average F1-micro: {average_f1:.4f} ± {std_f1:.4f}")
-    print(f"Best Fold F1-micro: {best_overall_f1:.4f}")
-    print(f"Best Hyperparameters: {best_hparams}")
-    print(f"Fold F1 scores: {fold_f1_scores}")
-    
-    return best_model_state, average_f1, best_hparams
