@@ -5,11 +5,11 @@ SEED = 1
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-EPOCHES = 50
+EPOCHS = 50
 
 BATCH_SIZE = 32
 
-OPTIMIZER = {
+OPTIMIZERS = {
     "adam": optim.Adam,
     "adamw": optim.AdamW
 }
@@ -23,10 +23,10 @@ PARAM_GRID = {
         (256, 128, 64), 
         (128, 64, 32)
         ],
-    "drop_out":[
+    "dropout":[
         (0.1, 0.1, 0.2), 
         (0.1, 0.3, 0.5)
         ],
 }
 
-EARLY_STOPPING = 10
+EARLY_STOPPING = 20
