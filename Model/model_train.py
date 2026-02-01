@@ -25,6 +25,38 @@ from sklearn.model_selection import KFold
 
 from scale_numeric_features import scale_log_transformed
 
+def train_MLP(X_train, y_train, hidden_dims, dropout, lr, weight_decay, batch_size, optimizer_definition, epochs, device):
+
+    input_dim = X_train.shape[1]
+    output_dim = y_train.shape[1]
+
+    model = MLP(in_dim=input_dim, hidden_dim=hidden_dims, dropout=dropout, out_dim=output_dim).to(device)
+
+    optimizer = optimizer_definition(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    pos_weight = calc_pos_class_weight(y_train)
+
+    # pos weight for handling class imabalance
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+
+    train_loader, _ = make_data_loaders(X=X_train,y=y_train, batch_size=batch_size)
+    
+    for epoch in range(epochs):
+        model.train()
+            
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+
+            optimizer.zero_grad()
+
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+
+            loss.backward()
+            optimizer.step()
+    return model
+
+
 def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
               model_definition=MLP, optimizers=OPTIMIZERS, param_grid=PARAM_GRID, epochs=EPOCHS,
               device=DEVICE, batch_size=BATCH_SIZE, label_threshold=LABEL_THRESHOLD, seed=SEED):
@@ -46,7 +78,6 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
     ):
         lr, weight_decay, hidden_dims, dropout = hparams
 
-
         print(f"\nTraining with HParams(k={k_i}): LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
 
         input_dim = X_train.shape[1]
@@ -54,7 +85,7 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
 
         model = model_definition(in_dim=input_dim, 
                       hidden_dim=hidden_dims, 
-                      drop_out=dropout, 
+                      dropout=dropout, 
                       out_dim=output_dim).to(device)
 
         optimizer = optimizers[optimizer_choice](model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -71,7 +102,7 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
 
         for epoch in range(epochs):
             model.train()
-            running_loss = 0.0
+            # running_loss = 0.0
             for inputs, labels in train_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
 
@@ -83,7 +114,7 @@ def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
                 loss.backward()
                 optimizer.step()
 
-                running_loss += loss.item() * inputs.size(0)
+                # running_loss += loss.item() * inputs.size(0)
 
             validation_probs, validation_labels = get_prediction_probs(model, val_loader)
             
