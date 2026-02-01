@@ -74,7 +74,7 @@ def calc_pos_class_weight(y:pd.DataFrame):
 
     for i in range(n_labels):
 
-        y_i = y_i.loc[:, i]
+        y_i = y.iloc[:, i]
         # unique classes in the given y
         unique_classes=np.unique(y_i)
 

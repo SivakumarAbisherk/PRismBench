@@ -25,8 +25,8 @@ from sklearn.model_selection import KFold
 
 from scale_numeric_features import scale_log_transformed
 
-def train_mlp(X_train, y_train, X_val, y_val, optimizer_choice, 
-              model=MLP, optimizers=OPTIMIZERS, param_grid=PARAM_GRID, epochs=EPOCHS,
+def train_mlp(X_train, y_train, X_val, y_val, optimizer_choice, k_i,
+              model_definition=MLP, optimizers=OPTIMIZERS, param_grid=PARAM_GRID, epochs=EPOCHS,
               device=DEVICE, batch_size=BATCH_SIZE, label_threshold=LABEL_THRESHOLD, seed=SEED):
     # set seed for any random initialization
     set_seed(seed=seed)
@@ -47,12 +47,12 @@ def train_mlp(X_train, y_train, X_val, y_val, optimizer_choice,
         lr, weight_decay, hidden_dims, dropout = hparams
 
 
-        print(f"\nTraining with HParams: LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
+        print(f"\nTraining with HParams(k={k_i}): LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
 
         input_dim = X_train.shape[1]
         output_dim = y_train.shape[1]
 
-        model = model(in_dim=input_dim, 
+        model = model_definition(in_dim=input_dim, 
                       hidden_dim=hidden_dims, 
                       drop_out=dropout, 
                       out_dim=output_dim).to(device)
@@ -117,7 +117,7 @@ def train_mlp_with_cv(X, y, optimizer_choice, k=5, **kwargs):
     Perform k-fold cross validation using train_mlp as helper function.
     
     Args:
-        X (np.ndarray): Feature matrix
+        X (pd.DataFrame): Feature matrix
         y (pd.DataFrame): Label matrix
         optimizer_choice (str): Optimizer to use ('adam' or 'adamw')
         k (int): Number of folds for cross validation
@@ -135,23 +135,23 @@ def train_mlp_with_cv(X, y, optimizer_choice, k=5, **kwargs):
     best_overall_f1 = -np.inf
     best_model_state = None
     best_hparams = None
-    
+
     for fold, (train_idx, val_idx) in enumerate(kf.split(X)):
         print(f"\n{'='*50}")
         print(f"Fold {fold+1}/{k}")
         print(f"{'='*50}")
         
-        X_train = X[train_idx]
-        y_train = y[train_idx]
-        X_val = X[val_idx]
-        y_val = y[val_idx]
+        X_train = X.iloc[train_idx]
+        y_train = y.iloc[train_idx]
+        X_val = X.iloc[val_idx]
+        y_val = y.iloc[val_idx]
 
-        X_train_scaled, scaler = scale_log_transformed(X_train, scaler=None)
-        X_val_scaled, scaler = scale_log_transformed(X_val, scaler=scaler)
+        X_train_scaled, scaler = scale_log_transformed(X_train, train_scaler=None)
+        X_val_scaled, scaler = scale_log_transformed(X_val, train_scaler=scaler)
 
         # Call train_mlp for this fold
         model_state, f1_score, hparams = train_mlp(
-            X_train_scaled, y_train, X_val_scaled, y_val, optimizer_choice, **kwargs
+            X_train_scaled, y_train, X_val_scaled, y_val, optimizer_choice, k_i=fold+1, **kwargs
         )
         
         fold_f1_scores.append(f1_score)
