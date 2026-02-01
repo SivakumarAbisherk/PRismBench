@@ -4,27 +4,27 @@ import pandas as pd
 
 from sklearn.preprocessing import StandardScaler
 
-def apply_log_transform(df:pd.DataFrame):
+def scale_and_log_transform(df:pd.DataFrame, train_scaler=None):
 
-    # drop pr_number from the training features
-    df = df.drop("pr_number", axis=1)
-
-    df = df.drop(NUMERIC_COLS, axis=1)
+    # get numeric features
+    df_numeric = df[NUMERIC_COLS]
 
     for col in NUMERIC_COLS:
-        assert df[col].min() >= 0, "Negative values provided for log transform"
+        assert df_numeric[col].min() >= 0, "Negative values provided for log transform"
 
     # apply log transform
-    df[NUMERIC_COLS] = np.log1p(df[NUMERIC_COLS])
+    df_log = pd.DataFrame()
+    df_log[NUMERIC_COLS] = np.log1p(df_numeric[NUMERIC_COLS])
 
-    return df
-
-def scale_log_transformed(df:pd.DataFrame, train_scaler=None):
+    
     # train scaler is not there (train_df)
     if not train_scaler:
-        train_scaler = StandardScaler().set_output(transform="pandas").fit(df)
+        train_scaler = StandardScaler().set_output(transform="pandas").fit(df_log)
 
-    scaled_df = pd.DataFrame(train_scaler.transform(df))
+    scaled_df = pd.DataFrame(train_scaler.transform(df_log))
+
+    for col in NUMERIC_COLS:
+        df[col] = scaled_df[col]
 
     return df, train_scaler
 
