@@ -1,32 +1,45 @@
 import numpy as np
 import pandas as pd
+import random
 
 from model_config import DEVICE
 
 import torch
 from torch.utils.data import DataLoader
+
+from torchmetrics.classification import (
+    MultilabelAccuracy,
+    MultilabelF1Score,
+    MultilabelPrecision,
+    MultilabelRecall,
+)
+
 from tabular_dataset import TabularDataset
 
 from sklearn.utils.class_weight import compute_class_weight
 
-def make_loaders(X_train, y_train, X_val, y_val, X_test, y_test, batch_size: int):
+def set_seed(seed):
+    """
+    Function set_seed controls random seed for reproducability
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
-    train_ds = TabularDataset(X_train, y_train)
-    val_ds   = TabularDataset(X_val, y_val)
-    test_ds  = TabularDataset(X_test, y_test)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  drop_last=False)
-    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, drop_last=False)
-    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, drop_last=False)
+def make_data_loaders(X, y, batch_size: int):
 
-    return train_loader, val_loader, test_loader, len(train_ds)
+    dataset = TabularDataset(X, y)
+    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True,  drop_last=False)
 
+    return dataloader, len(dataset)
 
 
 @torch.no_grad()
-def get_probs(model, loader):
+def get_prediction_probs(model, loader):
     """
-    Function get_probs computes the raw logits and compute & return the probabilities, truth labels as ndarrys .
+    Function get_prediction_probs computes the raw logits and compute & return the probabilities, truth labels as ndarrys .
     """
     # set model for inference mode: stops batch-norm and dropouts
     model.eval()
@@ -80,4 +93,34 @@ def calc_pos_class_weight(y:pd.DataFrame):
 
     return torch.tensor(pos_weights_list, dtype=torch.float32).to(DEVICE)
 
+def calculate_evaluation_metrics(probs:np.ndarray, y_true:np.ndarray, threshold:float):
+    """
+    Calculate multilabel evaluation metrics: accuracy, F1 score, precision, and recall.
+    """
+    
+    # labels from prediction probability values
+    preds = (probs > threshold).astype(int)
+    
+    preds_tensor = torch.tensor(preds, dtype=torch.float32)
+    y_true_tensor = torch.tensor(y_true, dtype=torch.float32)
+    
+    num_labels = y_true.shape[1]
+    
+
+    accuracy = MultilabelAccuracy(num_labels=num_labels)
+    precision = MultilabelPrecision(num_labels=num_labels)
+    recall = MultilabelRecall(num_labels=num_labels)
+    micro_f1 = MultilabelF1Score(num_labels=num_labels, average="micro")
+  
+    acc_val = accuracy(preds_tensor, y_true_tensor)
+    prec_val = precision(preds_tensor, y_true_tensor)
+    rec_val = recall(preds_tensor, y_true_tensor)
+    micro_f1_val = micro_f1(preds_tensor, y_true_tensor)
+    
+    return {
+        'accuracy': acc_val.item(),
+        'precision': prec_val.item(),
+        'recall': rec_val.item(),
+        'micro_f1': micro_f1_val.item(),
+    }
 
