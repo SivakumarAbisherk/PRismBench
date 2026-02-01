@@ -1,3 +1,5 @@
+LABEL_COLS = ["bug", "security", "performance" ,"code_quality_or_maintenability"]
+
 NUMERIC_COLS = [
     'additions',
     'author_account_age_days',
