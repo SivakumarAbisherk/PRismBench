@@ -1,10 +1,11 @@
-from data_config import NUMERIC_COLS
+from Model.data_config import NUMERIC_COLS
 import numpy as np
 import pandas as pd
+from typing import Tuple, Optional
 
 from sklearn.preprocessing import StandardScaler
 
-def scale_and_log_transform(df:pd.DataFrame, train_scaler=None):
+def scale_and_log_transform(df: pd.DataFrame, train_scaler: Optional[StandardScaler] = None) -> Tuple[pd.DataFrame, StandardScaler]:
 
     # get numeric features
     df_numeric = df[NUMERIC_COLS]
