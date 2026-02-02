@@ -24,7 +24,7 @@ from Model.model_utils import(
 import torch.nn as nn
 from sklearn.model_selection import KFold
 
-from Model.scale_numeric_features import scale_and_log_transform
+from Model.scale_numeric_features import scale_and_transform
 from typing import Tuple, List, Callable
 from sklearn.preprocessing import StandardScaler
 import torch
@@ -37,7 +37,7 @@ def train_final_MLP(X_train: pd.DataFrame, y_train: pd.DataFrame,
     print(f"\nFinal Model Training with HParams: LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
 
     # scale numeric data
-    X_train_scaled, scaler = scale_and_log_transform(X_train, train_scaler=None)
+    X_train_scaled, scaler = scale_and_transform(X_train, train_scaler=None)
 
     input_dim = X_train_scaled.shape[1]
     output_dim = y_train.shape[1]
@@ -95,7 +95,7 @@ def train_mlp_with_cv(X: pd.DataFrame, y: pd.DataFrame, optimizer_choice: str, k
     best_model_state = None
     best_hparams = None
 
-    X_scaled, scaler = scale_and_log_transform(X, train_scaler=None)
+    X_scaled, scaler = scale_and_transform(X, train_scaler=None)
 
     for fold, (train_idx, val_idx) in enumerate(kf.split(X_scaled)):
         print(f"\n{'='*50}")

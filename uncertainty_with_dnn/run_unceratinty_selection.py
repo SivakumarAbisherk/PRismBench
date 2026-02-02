@@ -23,7 +23,7 @@ from Model.model_train import train_final_MLP, train_mlp_with_cv, calculate_eval
 from Model.data_config import LABEL_COLS
 from Model.model_config import DEVICE, BATCH_SIZE, OPTIMIZERS, EPOCHS, LABEL_THRESHOLD, SEED
 from Model.model_utils import get_prediction_probs, make_data_loaders
-from Model.scale_numeric_features import scale_and_log_transform
+from Model.scale_numeric_features import scale_and_transform
 
 from .uncertainty_metric_calc import calculate_prediction_entropy
 
@@ -98,6 +98,9 @@ def run_uncertainty_selection(
     y=labeled_train[LABEL_COLS]
     X= labeled_train.drop(columns=LABEL_COLS)
 
+    if "pr_number" in X.columns:
+        X = X.drop(["pr_number"], axis=1)
+
     # labeled_train is scaled inside training function & "pr_number" is dropped inside
     _, average_f1, best_hparams, _ = train_mlp_with_cv(X, y, "adam")
 
@@ -117,11 +120,14 @@ def run_uncertainty_selection(
 
 ########################## Test final MLP on Golden Seed test set #####################################################
     # scaling is done outside the training function
-    labeled_test, t_scaler = scale_and_log_transform(labeled_test, t_scaler)
+    labeled_test, t_scaler = scale_and_transform(labeled_test, t_scaler)
 
     y_test = labeled_test[LABEL_COLS]
     # X_test = labeled_test.drop(columns=LABEL_COLS+["pr_number"])
     X_test = labeled_test.drop(columns=LABEL_COLS)
+
+    if "pr_number" in X_test.columns:
+        X_test = X_test.drop(["pr_number"], axis=1)
 
     test_loader, _ = make_data_loaders(X_test, y_test, BATCH_SIZE)
     test_prob, test_label = get_prediction_probs(final_model, test_loader)
