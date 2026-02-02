@@ -36,8 +36,6 @@ def train_final_MLP(X_train: pd.DataFrame, y_train: pd.DataFrame,
 
     print(f"\nFinal Model Training with HParams: LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
 
-    # drop pr_numer from the given dataframe
-    X_train = X_train.drop(columns=["pr_number"])
     # scale numeric data
     X_train_scaled, scaler = scale_and_log_transform(X_train, train_scaler=None)
 
@@ -97,8 +95,6 @@ def train_mlp_with_cv(X: pd.DataFrame, y: pd.DataFrame, optimizer_choice: str, k
     best_model_state = None
     best_hparams = None
 
-    # drop pr_numer from the given dataframe
-    X = X.drop(columns=["pr_number"])
     X_scaled, scaler = scale_and_log_transform(X, train_scaler=None)
 
     for fold, (train_idx, val_idx) in enumerate(kf.split(X_scaled)):
@@ -147,6 +143,11 @@ def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.Dat
     # set seed for any random initialization
     set_seed(seed=seed)
 
+    # Dynamically adjust batch size to avoid batch size of 1 during k-fold CV
+    # Batch norm requires batch size > 1 during training
+    min_fold_size = min(len(X_train), len(X_val))
+    adjusted_batch_size = max(1, min(batch_size, max(2, min_fold_size // 2)))
+
     # micro f1 is more statistically stable than macro f1
     # as micro pools all the TP,FP, FN together for calc --> increased sample size
     best_f1_micro = -np.inf
@@ -178,8 +179,8 @@ def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.Dat
         # pos weight for handling class imabalance
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
-        train_loader, _ = make_data_loaders(X=X_train,y=y_train, batch_size=batch_size)
-        val_loader, _ = make_data_loaders(X=X_val,y=y_val, batch_size=batch_size)
+        train_loader, _ = make_data_loaders(X=X_train,y=y_train, batch_size=adjusted_batch_size)
+        val_loader, _ = make_data_loaders(X=X_val,y=y_val, batch_size=adjusted_batch_size)
 
         for epoch in range(epochs):
             model.train()
