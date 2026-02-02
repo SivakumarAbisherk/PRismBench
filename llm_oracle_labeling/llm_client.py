@@ -21,7 +21,7 @@ def query_ollama_model(model_name: str, user_prompt: str) -> dict:
     payload = {
         "model": model_name,
         "messages": messages,
-        "temperature": 0.1,
+        "temperature": 0,
         "format": "json",
         "stream": False
     }
