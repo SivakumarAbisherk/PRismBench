@@ -1,13 +1,15 @@
 from pathlib import Path
-from uncertainty_selection.run_selection import run_uncertainty_selection
+# from uncertainty_selection.run_selection import run_uncertainty_selection
+from uncertainty_with_dnn.run_unceratinty_selection import run_uncertainty_selection
+
 from llm_oracle_labeling import run_labeling_pipeline, analyze_labeling_quality
 from extract_and_assign_labels import extract_and_assign_labels
 
 def main():
     
 
-    num_of_loops = 15
-    ml_features_csv = 'ML_Label_Input_apache_flink.csv'
+    num_of_loops = 2
+    ml_features_csv = 'ML_Label_Input_apache_beam.csv'
 
     uncertain_output_dir=Path("UncertainPoint")
     max_items = None # to limit llm labeling pr counts for testing purpose
@@ -17,15 +19,15 @@ def main():
     while(loop_number < loop_limit):
         pr_list_csv = uncertain_output_dir / f"loop_{loop_number}_selected.csv" 
         
-        selected_df = run_uncertainty_selection(
-            ml_features_csv=ml_features_csv,
+        selected = run_uncertainty_selection(
+            ml_features_csv='ML_Label_Input_apache_beam.csv',
             loop_number=loop_number,
             data_root=Path("SamplingLoopData"),
-            output_dir=uncertain_output_dir,
-            n_bootstrap=20,
-            top_uncertain=100,
+            output_dir=Path("UncertainPoint"),
+            model_monitor_dir=Path("ModelMonitoring"),
+            n_top_uncertain=100,
             k_diverse=25,
-            top_k_labels=3,
+            metric="euclidean",
             verbose=True
         )
 
