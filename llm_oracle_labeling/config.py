@@ -5,8 +5,7 @@ RISK_TYPE_LABELS = [
     'Bug Risk',
     'Security Risk',
     'Performance Risk',
-    'Maintainability Risk',
-    'Non-risky'
+    'Maintainability Risk'
 ]
 
 # Pipeline settings
