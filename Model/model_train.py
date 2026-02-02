@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import itertools
 
-from model_definition import MLP
-from model_config import (
+from Model.model_definition import MLP
+from Model.model_config import (
     SEED, 
     DEVICE, 
     EPOCHS, 
@@ -13,7 +13,7 @@ from model_config import (
     LABEL_THRESHOLD, 
     PARAM_GRID, 
 )
-from model_utils import(
+from Model.model_utils import(
     set_seed,
     make_data_loaders,
     get_prediction_probs,
@@ -24,12 +24,15 @@ from model_utils import(
 import torch.nn as nn
 from sklearn.model_selection import KFold
 
-from scale_numeric_features import scale_and_log_transform
+from Model.scale_numeric_features import scale_and_log_transform
+from typing import Tuple, List, Callable
+from sklearn.preprocessing import StandardScaler
+import torch
 
-def train_final_MLP(X_train:pd.DataFrame, y_train:pd.DataFrame, 
-              hidden_dims, dropout, 
-              lr, weight_decay, batch_size, optimizer_definition, 
-              epochs, device):
+def train_final_MLP(X_train: pd.DataFrame, y_train: pd.DataFrame, 
+              hidden_dims: List[int], dropout: float, 
+              lr: float, weight_decay: float, batch_size: int, optimizer_definition: Callable, 
+              epochs: int, device: torch.device) -> Tuple[MLP, StandardScaler]:
 
     print(f"\nFinal Model Training with HParams: LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
 
@@ -70,7 +73,7 @@ def train_final_MLP(X_train:pd.DataFrame, y_train:pd.DataFrame,
     return model, scaler
 
 
-def train_mlp_with_cv(X, y, optimizer_choice, k=5, **kwargs):
+def train_mlp_with_cv(X: pd.DataFrame, y: pd.DataFrame, optimizer_choice: str, k: int = 5, **kwargs) -> Tuple[dict, float, dict, StandardScaler]:
     """
     Perform k-fold cross validation using train_mlp as helper function.
     
@@ -136,9 +139,11 @@ def train_mlp_with_cv(X, y, optimizer_choice, k=5, **kwargs):
     return best_model_state, average_f1, best_hparams, scaler
 
 
-def tune_hyper_param(X_train, y_train, X_val, y_val, optimizer_choice, k_i, 
-                     optimizers=OPTIMIZERS, param_grid=PARAM_GRID, epochs=EPOCHS,
-              device=DEVICE, batch_size=BATCH_SIZE, label_threshold=LABEL_THRESHOLD, seed=SEED):
+def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.DataFrame, y_val: pd.DataFrame, 
+                     optimizer_choice: str, k_i: int, 
+                     optimizers: dict = OPTIMIZERS, param_grid: dict = PARAM_GRID, epochs: int = EPOCHS,
+                     device: torch.device = DEVICE, batch_size: int = BATCH_SIZE, 
+                     label_threshold: float = LABEL_THRESHOLD, seed: int = SEED) -> Tuple[dict, float, dict]:
     # set seed for any random initialization
     set_seed(seed=seed)
 
