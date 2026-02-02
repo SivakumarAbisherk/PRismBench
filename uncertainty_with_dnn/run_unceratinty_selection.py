@@ -106,11 +106,10 @@ def run_uncertainty_selection(
 
 ########################## Train final MLP with best hparams #########################################################
 
-    final_model, t_scaler = train_final_MLP(X_train=X, y_train=y,
+    final_model, t_scaler = train_final_MLP(X=X, y=y,
                                           hidden_dims=best_hparams["hidden_dims"], dropout=best_hparams["dropout"],
                                           lr=best_hparams["lr"], weight_decay=best_hparams["weight_decay"],
-                                          batch_size=BATCH_SIZE, optimizer_definition=OPTIMIZERS["adam"],
-                                          epochs=EPOCHS, device=DEVICE)
+                                          batch_size=BATCH_SIZE, optimizer_choice="adam")
     
 ########################## Store the final trained Model in each loop ################################################
     
