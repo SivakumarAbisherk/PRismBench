@@ -64,7 +64,7 @@ def extract_and_assign_labels(loop_number):
     label_process_cand_pr["security"]=0
     label_process_cand_pr["performance"]=0
     label_process_cand_pr["code_quality_or_maintenability"]=0
-    label_process_cand_pr["non_risky"]=0
+    # label_process_cand_pr["non_risky"]=0
 
     for _, row in accepted_label_df.iterrows():
         # get the pr number 
@@ -87,8 +87,8 @@ def extract_and_assign_labels(loop_number):
             if label == RISK_TYPE_LABELS[3]:
                 label_process_cand_pr.loc[label_process_cand_pr["pr_number"]==pr_number, "code_quality_or_maintenability"] = 1
             # non-risky case
-            if label == RISK_TYPE_LABELS[4]:
-                label_process_cand_pr.loc[label_process_cand_pr["pr_number"]==pr_number, "non_risky"] = 1
+            # if label == RISK_TYPE_LABELS[4]:
+            #     label_process_cand_pr.loc[label_process_cand_pr["pr_number"]==pr_number, "non_risky"] = 1
 
     label_process_cand_pr.to_csv(label_save_path, index=False)
     print(f"Wrote .csv to: {len(unlabeled_df)}")
