@@ -28,6 +28,9 @@ def calculate_prediction_entropy(
     # DataLoader expects label columns thus preparing dummy column
     dummy_y = pd.DataFrame(np.zeros((len(unlabeled_X), len(label_columns)), dtype=np.float32))
 
+    if "pr_number"in unlabeled_X.columns:
+        unlabeled_X = unlabeled_X.drop(["pr_number"], axis=1)
+
     dataset = TabularDataset(unlabeled_X, dummy_y)
     loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False)
 
