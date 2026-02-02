@@ -1,4 +1,19 @@
-__pycache__
-*/__pycache__
-venv
+# Python cache
+__pycache__/
+*/__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/
+
+# Data files
 *.csv
+
+# Model files
+*.pt
+
+# IDE
+.vscode/
+.idea/
