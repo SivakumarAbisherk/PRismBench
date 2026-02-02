@@ -11,21 +11,21 @@ import numpy as np
 import pandas as pd
 import torch
 
-from prepare_data import (
+from .prepare_data import (
     resolve_dir, 
     load_labeled_train_data,
     load_unlabeled_data,
     load_labeled_test_data
 )
-from uncertainty_metric_calc import calculate_prediction_entropy
-from k_center_greedy import k_center_greedy_from_uncertain
+from .uncertainty_metric_calc import calculate_prediction_entropy
+from .k_center_greedy import k_center_greedy_from_uncertain
 from Model.model_train import train_final_MLP, train_mlp_with_cv, calculate_evaluation_metrics
 from Model.data_config import LABEL_COLS
 from Model.model_config import DEVICE, BATCH_SIZE, OPTIMIZERS, EPOCHS, LABEL_THRESHOLD, SEED
 from Model.model_utils import get_prediction_probs, make_data_loaders
 from Model.scale_numeric_features import scale_and_log_transform
 
-from uncertainty_metric_calc import calculate_prediction_entropy
+from .uncertainty_metric_calc import calculate_prediction_entropy
 
 
 def run_uncertainty_selection(
@@ -89,7 +89,8 @@ def run_uncertainty_selection(
     if "pr_number" not in unlabeled.columns:
         raise ValueError("Unlabeled CSV must contain 'pr_number' column (needed for output mapping).")
     
-    X_unlabeled = unlabeled.drop(["pr_number"], axis=1)
+    # X_unlabeled = unlabeled.drop(["pr_number"], axis=1)
+    X_unlabeled = unlabeled.copy() 
     
 ########################## Train MLP with K-fold CV to pick best hparams #############################################
     # labeled_train_copy = labeled_train.copy()
@@ -119,7 +120,8 @@ def run_uncertainty_selection(
     labeled_test, t_scaler = scale_and_log_transform(labeled_test, t_scaler)
 
     y_test = labeled_test[LABEL_COLS]
-    X_test = labeled_test.drop(columns=LABEL_COLS+["pr_number"])
+    # X_test = labeled_test.drop(columns=LABEL_COLS+["pr_number"])
+    X_test = labeled_test.drop(columns=LABEL_COLS)
 
     test_loader, _ = make_data_loaders(X_test, y_test, BATCH_SIZE)
     test_prob, test_label = get_prediction_probs(final_model, test_loader)
