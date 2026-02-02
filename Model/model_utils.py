@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import random
 
-from model_config import DEVICE
+from Model.model_config import DEVICE
 
 import torch
 from torch.utils.data import DataLoader
@@ -14,11 +14,12 @@ from torchmetrics.classification import (
     MultilabelRecall,
 )
 
-from tabular_dataset import TabularDataset
+from Model.tabular_dataset import TabularDataset
 
 from sklearn.utils.class_weight import compute_class_weight
+from typing import Tuple
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
     """
     Function set_seed controls random seed for reproducability
     """
@@ -28,7 +29,7 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
 
 
-def make_data_loaders(X, y, batch_size: int):
+def make_data_loaders(X: pd.DataFrame, y: pd.DataFrame, batch_size: int) -> Tuple[DataLoader, int]:
 
     dataset = TabularDataset(X, y)
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True,  drop_last=False)
@@ -37,7 +38,7 @@ def make_data_loaders(X, y, batch_size: int):
 
 
 @torch.no_grad()
-def get_prediction_probs(model, loader):
+def get_prediction_probs(model: torch.nn.Module, loader: DataLoader) -> Tuple[np.ndarray, np.ndarray]:
     """
     Function get_prediction_probs computes the raw logits and compute & return the probabilities, truth labels as ndarrys .
     """
@@ -59,12 +60,12 @@ def get_prediction_probs(model, loader):
 
        
         probalities.append(prob)
-        y_source.append(yb.cpu().numpy()) # Removed .ravel() for multi-label
+        y_source.append(yb.cpu().numpy()) 
 
     return np.concatenate(probalities, axis=0), np.concatenate(y_source, axis=0)
 
 
-def calc_pos_class_weight(y:pd.DataFrame):
+def calc_pos_class_weight(y: pd.DataFrame) -> torch.Tensor:
     """
     Function calc_pos_class_weight returns pos/neg class ratio.
     """
@@ -93,7 +94,7 @@ def calc_pos_class_weight(y:pd.DataFrame):
 
     return torch.tensor(pos_weights_list, dtype=torch.float32).to(DEVICE)
 
-def calculate_evaluation_metrics(probs:np.ndarray, y_true:np.ndarray, threshold:float):
+def calculate_evaluation_metrics(probs: np.ndarray, y_true: np.ndarray, threshold: float) -> dict:
     """
     Calculate multilabel evaluation metrics: accuracy, F1 score, precision, and recall.
     """
