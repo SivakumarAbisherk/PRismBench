@@ -8,7 +8,7 @@ from extract_and_assign_labels import extract_and_assign_labels
 def main():
     
 
-    num_of_loops = 2
+    num_of_loops = 15
     ml_features_csv = 'ML_Label_Input_apache_beam.csv'
 
     uncertain_output_dir=Path("UncertainPoint")
