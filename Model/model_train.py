@@ -11,7 +11,9 @@ from Model.model_config import (
     BATCH_SIZE, 
     OPTIMIZERS, 
     LABEL_THRESHOLD, 
-    PARAM_GRID, 
+    PARAM_GRID,
+    EARLY_STOPPING_PATIENCE,
+    MIN_DELTA, 
 )
 from Model.model_utils import(
     set_seed,
@@ -23,28 +25,33 @@ from Model.model_utils import(
 
 import torch.nn as nn
 from sklearn.model_selection import KFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 
 from Model.scale_numeric_features import scale_and_transform
 from typing import Tuple, List, Callable
-from sklearn.preprocessing import StandardScaler
 import torch
 
-def train_final_MLP(X_train: pd.DataFrame, y_train: pd.DataFrame, 
+def train_final_MLP(X: pd.DataFrame, y: pd.DataFrame, 
               hidden_dims: List[int], dropout: float, 
-              lr: float, weight_decay: float, batch_size: int, optimizer_definition: Callable, 
-              epochs: int, device: torch.device) -> Tuple[MLP, StandardScaler]:
+              lr: float, weight_decay: float, batch_size: int, optimizer_choice: str) -> Tuple[MLP, StandardScaler]:
 
     print(f"\nFinal Model Training with HParams: LR={lr}, WeightDecay={weight_decay}, Dropout={dropout}, HiddenDims={hidden_dims}")
 
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=0.2, random_state=SEED, shuffle=True
+    )
+
     # scale numeric data
     X_train_scaled, scaler = scale_and_transform(X_train, train_scaler=None)
+    X_val_scaled, scaler = scale_and_transform(X_val, train_scaler=scaler)
 
     input_dim = X_train_scaled.shape[1]
     output_dim = y_train.shape[1]
 
-    model = MLP(in_dim=input_dim, hidden_dim=hidden_dims, dropout=dropout, out_dim=output_dim).to(device)
+    model = MLP(in_dim=input_dim, hidden_dim=hidden_dims, dropout=dropout, out_dim=output_dim).to(DEVICE)
 
-    optimizer = optimizer_definition(model.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = OPTIMIZERS[optimizer_choice](model.parameters(), lr=lr, weight_decay=weight_decay)
 
     pos_weight = calc_pos_class_weight(y_train)
 
@@ -52,12 +59,16 @@ def train_final_MLP(X_train: pd.DataFrame, y_train: pd.DataFrame,
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
     train_loader, _ = make_data_loaders(X=X_train_scaled,y=y_train, batch_size=batch_size)
+    val_loader, _ = make_data_loaders(X=X_val_scaled,y=y_val, batch_size=batch_size)
     
-    for epoch in range(epochs):
+    n_no_improvement_loop = 0
+    best_f1_micro = -np.inf
+
+    for epoch in range(EPOCHS):
         model.train()
             
         for inputs, labels in train_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
+            inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
 
             optimizer.zero_grad()
 
@@ -66,8 +77,28 @@ def train_final_MLP(X_train: pd.DataFrame, y_train: pd.DataFrame,
 
             loss.backward()
             optimizer.step()
+        
+        validation_probs, validation_labels = get_prediction_probs(model, val_loader)
+            
+        eval_metrics = calculate_evaluation_metrics(probs=validation_probs, y_true=validation_labels, threshold=LABEL_THRESHOLD)
 
-        print(f"Epoch {epoch+1}/{epochs} completed.")
+        val_accuracy, val_precision, val_recall, val_micro_f1 = eval_metrics.values()
+
+        print(f"Epoch {epoch+1}/{EPOCHS}, Val F1-micro: {val_micro_f1:.4f}  Val Recall: {val_recall:.4f}  Val Precision: {val_precision:.4f}  Val Acc: {val_accuracy:.4f}")
+
+        
+        if val_micro_f1 > best_f1_micro + MIN_DELTA:
+            best_f1_micro = val_micro_f1
+
+            n_no_improvement_loop = 0
+            
+        else:
+            n_no_improvement_loop += 1
+        
+        if n_no_improvement_loop > EARLY_STOPPING_PATIENCE:
+            print(f"Early Stopping at Epoch: {epoch + 1}")
+            break
+        
     return model, scaler
 
 
@@ -116,10 +147,11 @@ def train_mlp_with_cv(X: pd.DataFrame, y: pd.DataFrame, optimizer_choice: str, k
         fold_hparams.append(hparams)
         fold_model_states.append(model_state)
         
-        if f1_score > best_overall_f1:
+        if f1_score > best_overall_f1 :
             best_overall_f1 = f1_score
             best_model_state = model_state
             best_hparams = hparams
+        
     
     average_f1 = np.mean(fold_f1_scores)
     std_f1 = np.std(fold_f1_scores)
@@ -136,12 +168,9 @@ def train_mlp_with_cv(X: pd.DataFrame, y: pd.DataFrame, optimizer_choice: str, k
 
 
 def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.DataFrame, y_val: pd.DataFrame, 
-                     optimizer_choice: str, k_i: int, 
-                     optimizers: dict = OPTIMIZERS, param_grid: dict = PARAM_GRID, epochs: int = EPOCHS,
-                     device: torch.device = DEVICE, batch_size: int = BATCH_SIZE, 
-                     label_threshold: float = LABEL_THRESHOLD, seed: int = SEED) -> Tuple[dict, float, dict]:
+                     optimizer_choice: str, k_i: int, batch_size: int = BATCH_SIZE) -> Tuple[dict, float, dict]:
     # set seed for any random initialization
-    set_seed(seed=seed)
+    set_seed(seed=SEED)
 
     # Dynamically adjust batch size to avoid batch size of 1 during k-fold CV
     # Batch norm requires batch size > 1 during training
@@ -155,10 +184,10 @@ def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.Dat
     best_model_state = None
 
     for hparams in itertools.product(
-        param_grid["lr"],
-        param_grid["weight_decay"],
-        param_grid["hidden_dims"],
-        param_grid['dropout'],
+        PARAM_GRID["lr"],
+        PARAM_GRID["weight_decay"],
+        PARAM_GRID["hidden_dims"],
+        PARAM_GRID['dropout'],
     ):
         lr, weight_decay, hidden_dims, dropout = hparams
 
@@ -170,9 +199,9 @@ def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.Dat
         model = MLP(in_dim=input_dim, 
                       hidden_dim=hidden_dims, 
                       dropout=dropout, 
-                      out_dim=output_dim).to(device)
+                      out_dim=output_dim).to(DEVICE)
 
-        optimizer = optimizers[optimizer_choice](model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = OPTIMIZERS[optimizer_choice](model.parameters(), lr=lr, weight_decay=weight_decay)
 
         pos_weight = calc_pos_class_weight(y_train)
 
@@ -182,11 +211,13 @@ def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.Dat
         train_loader, _ = make_data_loaders(X=X_train,y=y_train, batch_size=adjusted_batch_size)
         val_loader, _ = make_data_loaders(X=X_val,y=y_val, batch_size=adjusted_batch_size)
 
-        for epoch in range(epochs):
+        n_no_improvement_loop = 0
+
+        for epoch in range(EPOCHS):
             model.train()
 
             for inputs, labels in train_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
+                inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
 
                 optimizer.zero_grad()
 
@@ -198,14 +229,14 @@ def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.Dat
 
             validation_probs, validation_labels = get_prediction_probs(model, val_loader)
             
-            eval_metrics = calculate_evaluation_metrics(probs=validation_probs, y_true=validation_labels, threshold=label_threshold)
+            eval_metrics = calculate_evaluation_metrics(probs=validation_probs, y_true=validation_labels, threshold=LABEL_THRESHOLD)
 
             val_accuracy, val_precision, val_recall, val_micro_f1 = eval_metrics.values()
 
-            print(f"Epoch {epoch+1}/{epochs}, Val F1-micro: {val_micro_f1:.4f}  Val Recall: {val_recall:.4f}  Val Precision: {val_precision:.4f}  Val Acc: {val_accuracy:.4f}")
+            print(f"Epoch {epoch+1}/{EPOCHS}, Val F1-micro: {val_micro_f1:.4f}  Val Recall: {val_recall:.4f}  Val Precision: {val_precision:.4f}  Val Acc: {val_accuracy:.4f}")
 
         
-            if val_micro_f1 > best_f1_micro:
+            if val_micro_f1 > best_f1_micro + MIN_DELTA:
                 best_f1_micro = val_micro_f1
             
                 best_hparams = {
@@ -215,6 +246,15 @@ def tune_hyper_param(X_train: pd.DataFrame, y_train: pd.DataFrame, X_val: pd.Dat
                     "dropout": dropout,
                 }
                 best_model_state = copy.deepcopy(model.state_dict())
+                n_no_improvement_loop = 0
+            
+            else:
+                n_no_improvement_loop += 1
+
+            if n_no_improvement_loop > EARLY_STOPPING_PATIENCE:
+                print(f"Early Stopping at Epoch: {epoch + 1}")
+                break
+
 
     print("\nHyperparameter tuning complete!")
     print(f"Best Hyperparameters: {best_hparams}")

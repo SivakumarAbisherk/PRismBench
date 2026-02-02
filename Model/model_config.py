@@ -5,7 +5,7 @@ SEED = 1
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-EPOCHS = 50
+EPOCHS = 100
 
 BATCH_SIZE = 32
 
@@ -29,4 +29,5 @@ PARAM_GRID = {
         ],
 }
 
-EARLY_STOPPING = 20
+MIN_DELTA = 1e-4
+EARLY_STOPPING_PATIENCE = 10
