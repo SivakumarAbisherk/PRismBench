@@ -6,6 +6,10 @@ from sklearn.metrics import classification_report, accuracy_score, hamming_loss,
 from tqdm import tqdm
 import sys
 
+# Add parent directory to sys.path to allow importing from repo root
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
+
 # Import existing libraries from the repo
 from llm_oracle_labeling.llm_client import query_gemma, query_llama, query_mistral
 from llm_oracle_labeling.data_loader import load_ml_features_dataset, lookup_pr_details
@@ -17,11 +21,11 @@ from llm_oracle_labeling.config import RISK_TYPE_LABELS
 # ==========================================
 
 # Path to your Ground Truth files
-LABELED_TRAIN_PATH ="SamplingLoopData/loop_0_data/labeled_train_data.csv"
-LABELED_TEST_PATH ="SamplingLoopData/loop_0_data/labeled_test_data.csv"
+LABELED_TRAIN_PATH =str(project_root)+ "\\SamplingLoopData\\loop_0_data\\labeled_train_data.csv"
+LABELED_TEST_PATH =str(project_root)+ "\\SamplingLoopData\\loop_0_data\\labeled_test_data.csv"
 
 # Path to the features file (to get PR title, description, SZZ issues)
-ML_FEATURES_PATH = "ML_Label_Input_apache_kafka.csv"
+ML_FEATURES_PATH = str(project_root)+"\\ML_Label_Input_apache_kafka.csv"
 
 # Map CSV columns in labeled_train_data.csv to the LLM output strings in RISK_TYPE_LABELS
 # Based on logic in extract_and_assign_labels.py
